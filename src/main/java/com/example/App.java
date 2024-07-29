@@ -102,7 +102,6 @@ public class App
         AuditInfo auditInfo = new AuditInfo();
         auditInfo.setUserId("A1435477A1435477");
         auditInfo.setUserName("John Smith");
-        auditInfo.setOrganization("Any Bank");
         auditInfo.setPhone("555 1234");
 
         TokenActivateData tokenActivateData  = new TokenActivateData();
