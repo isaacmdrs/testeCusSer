@@ -102,7 +102,9 @@ public class App
         AuditInfo auditInfo = new AuditInfo();
         auditInfo.setUserId("A1435477A1435477");
         auditInfo.setUserName("John Smith");
+        auditInfo.setOrganization("Any Bank");
         auditInfo.setPhone("555 1234");
+
 
         TokenActivateData tokenActivateData  = new TokenActivateData();
         tokenActivateData.setTokenUniqueReference("DWSPMC00000000010906a349d9ca4eb1a4d53e3c90a11d9cv");

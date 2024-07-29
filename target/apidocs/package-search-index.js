@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"com.example"},{"l":"com.example.mastercard"},{"l":"com.example.mastercard.api"},{"l":"com.example.mastercard.auth"},{"l":"com.example.mastercard.model"}];updateSearchResults();
