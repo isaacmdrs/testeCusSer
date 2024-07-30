@@ -11,7 +11,10 @@ import com.example.mastercard.ApiClient;
 import com.example.mastercard.ApiException;
 import com.example.mastercard.api.SearchApi;
 import com.example.mastercard.api.TokenActivateApi;
+import com.example.mastercard.model.AccountData;
+import com.example.mastercard.model.AccountDataCurrentAccount;
 import com.example.mastercard.model.AuditInfo;
+import com.example.mastercard.model.EncryptedAccountInformation;
 import com.example.mastercard.model.Search;
 import com.example.mastercard.model.SearchData;
 import com.example.mastercard.model.SearchResults;
@@ -47,43 +50,44 @@ public class App
         System.out.println( "Iniciando..." );
 
         FieldLevelEncryptionConfig encryptionConfig = FieldLevelEncryptionConfigBuilder.aFieldLevelEncryptionConfig()
-        .withEncryptionPath("$.EncryptedAccountInformation.encryptedData", "$.EncryptedAccountInformation")
+        .withEncryptionPath("$.TokenActivateRequest.EncryptedAccountInformation.EncryptedData", "$.TokenActivateRequest.EncryptedAccountInformation")
         .withEncryptionCertificate(EncryptionUtils.loadEncryptionCertificate("src/main/java/com/example/Public-Key-Encrypt.crt"))
         .withOaepPaddingDigestAlgorithm("SHA-512")
-        .withEncryptedValueFieldName("encryptedData")
+        .withEncryptedValueFieldName("EncryptedData")
         .withEncryptedKeyFieldName("EncryptedKey")
-        .withIvFieldName("iv")
-        .withOaepPaddingDigestAlgorithmFieldName("oaepHashingAlgorithm")
-        .withEncryptionCertificateFingerprintFieldName("publicKeyFingerprint")
+        .withIvFieldName("Iv")
+        .withOaepPaddingDigestAlgorithmFieldName("OaepHashingAlgorithm")
+        .withEncryptionCertificateFingerprintFieldName("PublicKeyFingerprint")
         .withFieldValueEncoding(FieldValueEncoding.HEX)
         .build();
 
         ApiClient client = new ApiClient();
         Builder httpClientBuilder = client.getHttpClient().newBuilder();
 
-        // Adicione o HttpLoggingInterceptor
+        httpClientBuilder.addInterceptor(OkHttpEncryptionInterceptor.from(encryptionConfig));
+
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
         loggingInterceptor.setLevel(Level.BODY); // Define o nível de logging
         httpClientBuilder.addInterceptor(loggingInterceptor);
 
-        // Interceptor personalizado para formatar a saída da requisição
-        httpClientBuilder.addInterceptor(new Interceptor() {
-            @Override
-            public Response intercept(Chain chain) throws IOException {
-                Request request = chain.request();
-                long t1 = System.nanoTime();
-                System.out.println(String.format("MANDANDO A REQUEST %s on %s%n%s",
-                        request.url(), chain.connection(), request.headers()));
-
-                Response response = chain.proceed(request);
-
-                long t2 = System.nanoTime();
-                System.out.println(String.format("RESPOSTA RECEBIDA EM %s in %.1fms%n%s",
-                        response.request().url(), (t2 - t1) / 1e6d, response.headers()));
-
-                return response;
-            }
-        });
+               // Interceptor personalizado para formatar a saída da requisição
+               httpClientBuilder.addInterceptor(new Interceptor() {
+                @Override
+                public Response intercept(Chain chain) throws IOException {
+                    Request request = chain.request();
+                    long t1 = System.nanoTime();
+                    System.out.println(String.format("MANDANDO A REQUEST %s on %s%n%s",
+                            request.url(), chain.connection(), request.headers()));
+    
+                    Response response = chain.proceed(request);
+    
+                    long t2 = System.nanoTime();
+                    System.out.println(String.format("RESPOSTA RECEBIDA EM %s in %.1fms%n%s",
+                            response.request().url(), (t2 - t1) / 1e6d, response.headers()));
+    
+                    return response;
+                }
+            });
 
         // Configure the Mastercard service URL
         client.setBasePath("https://sandbox.api.mastercard.com/mdes/csapi");
@@ -92,8 +96,11 @@ public class App
         // Add the interceptor code responsible for signing HTTP requests
         httpClientBuilder.addInterceptor(new OkHttpOAuth1Interceptor("pWaQlGrSuIcwF59QQ_c3-vZGKsukPZILbJFHS30122531de3!e3b290dad44e4e3eac4609c546fe3c5d0000000000000000", signingKey));
         // Add the interceptor code responsible for encrypting requests and decrypting responses
-        httpClientBuilder.addInterceptor(OkHttpEncryptionInterceptor.from(encryptionConfig));
         client.setHttpClient(httpClientBuilder.build());
+
+ 
+
+
 
         TokenActivateApi api2 = new TokenActivateApi(client);
 
@@ -107,10 +114,33 @@ public class App
 
 
         TokenActivateData tokenActivateData  = new TokenActivateData();
-        tokenActivateData.setTokenUniqueReference("DWSPMC00000000010906a349d9ca4eb1a4d53e3c90a11d9cv");
+        /* usando TUR (Token Unique Reference) */
+        // tokenActivateData.setTokenUniqueReference("DWSPMC00000000010906a349d9ca4eb1a4d53e3c90a11d9cv");
         tokenActivateData.setCommentText("Confirmed cardholder identity");
         tokenActivateData.setReasonCode("C");
         tokenActivateData.setAuditInfo(auditInfo);
+
+
+        /* usando PAN  */
+        tokenActivateData.setPaymentAppInstanceId("645b532a245e4723d7a9c4f62b24f24a24ba98e27d43e34e");
+        EncryptedAccountInformation encryptedAccountInformation = new EncryptedAccountInformation();
+        
+        AccountData encryptedData = new AccountData();
+
+        AccountDataCurrentAccount accountDataCurrentAccount = new AccountDataCurrentAccount();
+        
+        accountDataCurrentAccount.setAccountPan("5412345678901234");
+
+        encryptedData.setCurrentAccount(accountDataCurrentAccount);
+
+        encryptedAccountInformation.setEncryptedData(encryptedData);
+
+        encryptedAccountInformation.setPublicKeyFingerprint("4c4ead5927f0df8117f178eea9308daa58e27c2b");
+        encryptedAccountInformation.setEncryptedKey("A1B2C3D4E5F6112233445566");
+        encryptedAccountInformation.setOaepHashingAlgorithm("SHA512");
+        encryptedAccountInformation.setIv("1b9396c98ab2bfd195de661d70905a45");
+
+        tokenActivateData.setEncryptedAccountInformation(encryptedAccountInformation);
 
         request2.setTokenActivateRequest(tokenActivateData);
 
